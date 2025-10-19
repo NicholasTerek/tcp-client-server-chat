@@ -12,12 +12,27 @@ print(f"[SERVER] Socket created")
 server_socket.bind((HOST, PORT))
 print(f"[SERVER] Socket bound to {HOST}:{PORT}")
 
-# Start listening for connections
 server_socket.listen(MAX_CLIENTS) 
 print(f"[SERVER] Server is listening for connections...")
 
 client_socket, client_address = server_socket.accept()
 print(f"[SERVER] Connection accepted from {client_address}")
+while True:
+    data = client_socket.recv(1024)
+    if not data:
+        print(f"[SERVER] Client disconnected")
+        break
+
+    message = data.decode('utf-8')
+    print(f"[SERVER] Received message: '{message}'")
+
+    response = message.upper()
+    client_socket.send(response.encode('utf-8'))
+    print(f"[SERVER] Sent response: '{response}'")
+
+    if message.lower() == "exit":
+        print(f"[SERVER] Client requested exit")
+        break
 
 # Close sockets
 client_socket.close()
