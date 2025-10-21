@@ -2,12 +2,14 @@
 import socket
 import threading
 import os
+import time
+import sys
 from datetime import datetime
 
 HOST = '127.0.0.1'
 PORT = 5000
 MAX_CLIENTS = 3
-FILE_REPO = 'server_files'  # Folder with files
+FILE_REPO = 'server_files'
 
 # Tracking
 client_counter = 0
@@ -60,19 +62,33 @@ def handle_client(client_socket, client_address, client_name):
             except:
                 client_socket.send("Error: Repository not found".encode('utf-8'))
         
-        else:
-            # Check if it's a file request
-            filepath = os.path.join(FILE_REPO, message)
+        elif message.lower().startswith("file "):
+            # File request command: "file filename.txt"
+            filename = message[5:].strip()
+            filepath = os.path.join(FILE_REPO, filename)
+            
             if os.path.isfile(filepath):
-                # Send file
+                # Send file size first, then file data
+                file_size = os.path.getsize(filepath)
+                header = f"FILE:{filename}:{file_size}:"
+                client_socket.send(header.encode('utf-8'))
+                
+                # Wait a bit for client to process header
+                time.sleep(0.1)
+                
+                # Send file data
                 with open(filepath, 'rb') as f:
                     file_data = f.read()
                 client_socket.send(file_data)
-                print(f"[SERVER] Sent file '{message}' to {client_name}")
+                print(f"[SERVER] Sent file '{filename}' ({file_size} bytes) to {client_name}")
             else:
-                # Regular message - send ACK
-                response = message + " ACK"
-                client_socket.send(response.encode('utf-8'))
+                error_msg = f"Error: File '{filename}' not found"
+                client_socket.send(error_msg.encode('utf-8'))
+        
+        else:
+            # Regular message - send ACK
+            response = message + " ACK"
+            client_socket.send(response.encode('utf-8'))
     
     # Update cache and cleanup
     with lock:
@@ -96,13 +112,17 @@ if not os.path.exists(FILE_REPO):
 # Server setup
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.settimeout(1.0)  # 1 second timeout to allow Ctrl+C to work
 server_socket.bind((HOST, PORT))
 server_socket.listen(MAX_CLIENTS)
 print(f"[SERVER] Listening on {HOST}:{PORT} (max {MAX_CLIENTS} clients)")
 
 try:
     while True:
-        client_socket, client_address = server_socket.accept()
+        try:
+            client_socket, client_address = server_socket.accept()
+        except socket.timeout:
+            continue
         
         # Check capacity
         with lock:
@@ -122,6 +142,6 @@ try:
         thread.start()
 
 except KeyboardInterrupt:
-    print("\n[SERVER] Shutting down...")
-finally:
+    print("\n[SERVER] Shutting down")
     server_socket.close()
+    sys.exit(0)
