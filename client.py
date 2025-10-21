@@ -1,6 +1,5 @@
 # python client.py
-# Authors: Artin Jahanbani, Nicholas Terek
-# CP372 Fall 2025 - Programming Assignment
+
 import socket
 import os
 
@@ -26,6 +25,7 @@ if "Server is full" in response:
 
 client_name = response
 print(f"[CLIENT] Assigned: {client_name}")
+client_socket.send(f"name {client_name}".encode("utf-8"))
 
 while True:
     message = input(f"{client_name}> ")
