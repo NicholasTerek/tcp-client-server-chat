@@ -1,6 +1,5 @@
 # python server.py
-# Authors: Artin Jahanbani, Nicholas Terek
-# CP372 Fall 2025 - Programming Assignment
+
 import socket
 import threading
 import os
